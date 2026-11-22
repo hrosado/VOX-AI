@@ -1,0 +1,5 @@
+{
+ "name":"VOX AI Voice Recorder","short_name":"VOX AI","start_url":"./","display":"standalone",
+ "background_color":"#0b1020","theme_color":"#0b1020","lang":"es",
+ "icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

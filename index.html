@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VOX AI">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>VOX AI</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#151d33;--muted:#9aa7c2;--red:#ff435d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#fff;font:16px -apple-system,BlinkMacSystemFont,sans-serif}
+main{max-width:620px;margin:auto;padding:env(safe-area-inset-top) 18px calc(28px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;gap:10px;padding:18px 0;font-weight:800;letter-spacing:1.5px}
+.logo{color:#ff7185;font-size:24px}h1{font-size:13px;color:#aab5ca;text-align:center;letter-spacing:2px;margin:28px 0 8px}
+#timer{text-align:center;font-size:44px;font-weight:300;font-variant-numeric:tabular-nums}
+.wave{height:76px;border-radius:18px;background:var(--panel);display:flex;align-items:center;justify-content:center;gap:5px;margin:20px 0}
+.wave i{width:4px;height:10px;border-radius:9px;background:#596681}.recording .wave i{background:var(--red);animation:pulse .65s infinite alternate}
+@keyframes pulse{to{transform:scaleY(3)}}
+.record{display:block;margin:20px auto 10px;width:94px;height:94px;border:0;border-radius:50%;background:var(--red);color:white;font-size:34px;box-shadow:0 0 35px #ff435d55}
+button{cursor:pointer}button:disabled{opacity:.4}
+.status{text-align:center;color:#d8deeb;font-size:12px;letter-spacing:1px;min-height:18px}
+.controls{display:flex;justify-content:center;gap:12px;margin:16px}
+.controls button,.action{border:1px solid #38445f;background:#202a43;color:#fff;border-radius:12px;padding:12px 16px}
+.controls .stop{background:#a92d46;border-color:#a92d46}
+h2{font-size:14px;letter-spacing:1px;margin:32px 0 12px}
+.note{color:var(--muted);font-size:12px;line-height:1.5}
+.item{background:var(--panel);border:1px solid #27324b;border-radius:14px;padding:12px;margin:9px 0;display:flex;align-items:center;gap:10px}
+.item .meta{flex:1;min-width:0}.item strong{display:block;overflow-wrap:anywhere;font-size:13px}.item small{color:var(--muted)}
+.item button{border:0;background:#293550;color:white;border-radius:9px;padding:9px}
+.pills{display:flex;gap:7px;flex-wrap:wrap}.pill{background:#202a43;border-radius:20px;padding:8px 11px;color:#dce4f5;font-size:12px}
+footer{color:#75829e;font-size:11px;text-align:center;margin:28px 0 8px}
+</style>
+</head>
+<body>
+<main id="app">
+<header><span class="logo">◉</span> VOX AI</header>
+<h1>TU VOZ. TUS IDEAS.</h1>
+<div id="timer">00:00:00</div>
+<div class="wave" aria-hidden="true" id="wave"></div>
+<button class="record" id="record" aria-label="Iniciar grabación">●</button>
+<div class="status" id="status">TOCA PARA GRABAR</div>
+<div class="controls">
+<button id="pause" disabled>Ⅱ Pausar</button>
+<button id="stop" class="stop" disabled>■ Detener</button>
+</div>
+<h2>MIS GRABACIONES <span id="count" style="color:#9aa7c2;font-weight:400"></span></h2>
+<div id="list"></div>
+<p class="note">Las grabaciones se guardan en este dispositivo mientras los datos del sitio permanezcan disponibles. Exporta los audios importantes para conservar una copia.</p>
+
+<h2>IDIOMAS DE TRANSCRIPCIÓN</h2>
+<section class="item" style="display:block">
+  <label for="sourceLang" style="display:block;font-size:12px;color:#9aa7c2;margin-bottom:7px">Idioma original de la conversación</label>
+  <select id="sourceLang" style="width:100%;padding:12px;border-radius:10px;background:#202a43;color:white;border:1px solid #38445f">
+    <option>Detectar automáticamente</option><option>Español</option><option>Inglés</option><option>Francés</option><option>Portugués</option><option>Italiano</option><option>Alemán</option><option>Chino</option><option>Japonés</option><option>Coreano</option><option>Árabe</option><option>Otro</option>
+  </select>
+  <label for="transcriptLang" style="display:block;font-size:12px;color:#9aa7c2;margin:14px 0 7px">Idioma deseado para la transcripción</label>
+  <select id="transcriptLang" style="width:100%;padding:12px;border-radius:10px;background:#202a43;color:white;border:1px solid #38445f">
+    <option>Español</option><option>Inglés</option><option>Francés</option><option>Portugués</option><option>Italiano</option><option>Alemán</option><option>Chino</option><option>Japonés</option><option>Coreano</option><option>Árabe</option>
+  </select>
+  <label for="translateExtra" style="display:block;font-size:12px;color:#9aa7c2;margin:14px 0 7px">¿Generar también una traducción adicional?</label>
+  <select id="translateExtra" style="width:100%;padding:12px;border-radius:10px;background:#202a43;color:white;border:1px solid #38445f">
+    <option value="yes">Sí</option><option value="no">No</option>
+  </select>
+  <button class="action" id="saveLang" style="width:100%;margin-top:14px">Guardar preferencias</button>
+  <p id="langStatus" class="note" aria-live="polite">Preferencias iniciales: detección automática → español, traducción adicional activada.</p>
+</section>
+
+
+<h2>IDENTIFICACIÓN DE PARTICIPANTES</h2>
+<section class="item" style="display:block">
+  <p class="note">VOX AI podrá separar las voces y estimar cuántas personas participan. La etiqueta inicial será neutral; podrás cambiarla manualmente después de escuchar la voz.</p>
+  <label for="speakerStyle" style="display:block;font-size:12px;color:#9aa7c2;margin:10px 0 7px">Formato de etiquetas</label>
+  <select id="speakerStyle" style="width:100%;padding:12px;border-radius:10px;background:#202a43;color:white;border:1px solid #38445f">
+    <option value="Voz">Voz 1, Voz 2, Voz 3…</option>
+    <option value="Persona">Persona 1, Persona 2, Persona 3…</option>
+    <option value="Participante">Participante 1, Participante 2…</option>
+  </select>
+  <label for="speakerCount" style="display:block;font-size:12px;color:#9aa7c2;margin:14px 0 7px">Mostrar estimación de participantes</label>
+  <select id="speakerCount" style="width:100%;padding:12px;border-radius:10px;background:#202a43;color:white;border:1px solid #38445f">
+    <option value="yes">Sí</option><option value="no">No</option>
+  </select>
+  <label for="speakerNames" style="display:block;font-size:12px;color:#9aa7c2;margin:14px 0 7px">Nombres personalizados (opcional)</label>
+  <input id="speakerNames" placeholder="Ej.: Ella 1, Ella 2, Carlos" style="width:100%;padding:12px;border-radius:10px;background:#202a43;color:white;border:1px solid #38445f">
+  <button class="action" id="saveSpeakers" style="width:100%;margin-top:14px">Guardar preferencias</button>
+  <p id="speakerStatus" class="note" aria-live="polite">Etiquetas neutrales y estimación de participantes activadas.</p>
+</section>
+
+
+<h2>FORMATO DE TRANSCRIPCIÓN BILINGÜE</h2>
+<section class="item" style="display:block">
+  <p class="note">VOX AI conservará el audio original y la transcripción original. La traducción aparecerá debajo de cada intervención, sin sustituir lo que se dijo.</p>
+  <label for="bilingualView" style="display:block;font-size:12px;color:#9aa7c2;margin:10px 0 7px">Presentación del texto</label>
+  <select id="bilingualView" style="width:100%;padding:12px;border-radius:10px;background:#202a43;color:white;border:1px solid #38445f">
+    <option value="stacked">Original arriba y traducción debajo</option>
+    <option value="original">Mostrar solo original</option>
+    <option value="translated">Mostrar solo traducción</option>
+  </select>
+  <label for="keepOriginal" style="display:block;font-size:12px;color:#9aa7c2;margin:14px 0 7px">Conservar siempre el audio y texto originales</label>
+  <select id="keepOriginal" style="width:100%;padding:12px;border-radius:10px;background:#202a43;color:white;border:1px solid #38445f">
+    <option value="yes">Sí, conservarlos</option>
+  </select>
+  <button class="action" id="saveBilingual" style="width:100%;margin-top:14px">Guardar formato</button>
+  <p id="bilingualStatus" class="note" aria-live="polite">Predeterminado: original arriba, traducción debajo; conservar audio y original.</p>
+</section>
+<div class="item" style="display:block">
+  <strong style="margin-bottom:9px">Ejemplo de cómo se verá cada intervención</strong>
+  <div style="font-size:11px;color:#9aa7c2;margin:8px 0">VOZ 1 · 00:00:04</div>
+  <div style="border-left:3px solid #67a9ff;padding:8px 10px;margin:6px 0;background:#202a43;border-radius:0 8px 8px 0">
+    <small style="color:#9fc8ff">ORIGINAL · INGLÉS</small>
+    <div>We need to review the quality report before Friday.</div>
+  </div>
+  <div style="border-left:3px solid #49c99a;padding:8px 10px;margin:6px 0;background:#202a43;border-radius:0 8px 8px 0">
+    <small style="color:#79e0b9">TRADUCCIÓN · ESPAÑOL</small>
+    <div>Necesitamos revisar el informe de calidad antes del viernes.</div>
+  </div>
+  <p class="note">El audio original quedará vinculado a esta intervención para poder volver a escucharla y resolver dudas sobre lo dicho.</p>
+</div>
+
+
+
+<h2>CENTRO DE ASISTENTES</h2>
+<section class="item" style="display:block">
+  <p class="note">Dos asistentes con funciones diferentes. VOX AI trabaja con la evidencia de la reunión; ChatGPT Connected ayuda con conocimiento general y explicaciones.</p>
+  <div style="background:#202a43;border-radius:12px;padding:13px;margin:10px 0">
+    <strong>◉ VOX AI Assistant</strong>
+    <p class="note">Asistente de la reunión: quién dijo qué, decisiones, fechas, tareas y respuestas con minuto y fragmento de audio.</p>
+    <span class="pill">Motor de reunión: pendiente de conexión</span>
+  </div>
+  <div style="background:#202a43;border-radius:12px;padding:13px;margin:10px 0">
+    <strong>✦ ChatGPT Connected</strong>
+    <p class="note">Asistente de conocimiento: explicar términos, preparar preguntas, aclarar conceptos y analizar el contexto que el usuario decida compartir.</p>
+    <span class="pill">Conexión de cuenta: pendiente de autorización y elegibilidad</span>
+  </div>
+  <label for="assistantMode" style="display:block;font-size:12px;color:#9aa7c2;margin:14px 0 7px">Asistente preferido</label>
+  <select id="assistantMode" style="width:100%;padding:12px;border-radius:10px;background:#202a43;color:white;border:1px solid #38445f">
+    <option value="vox">VOX AI Assistant — conversación</option>
+    <option value="chatgpt">ChatGPT Connected — conocimiento</option>
+    <option value="both">Ambos — según la pregunta</option>
+  </select>
+  <label for="replyMode" style="display:block;font-size:12px;color:#9aa7c2;margin:14px 0 7px">Cómo recibir respuestas</label>
+  <select id="replyMode" style="width:100%;padding:12px;border-radius:10px;background:#202a43;color:white;border:1px solid #38445f">
+    <option value="screen">Solo en pantalla</option>
+    <option value="earbuds">Auriculares — cuando iPhone lo permita</option>
+    <option value="both">Pantalla y auriculares</option>
+  </select>
+  <label for="privateMode" style="display:block;font-size:12px;color:#9aa7c2;margin:14px 0 7px">Modo privado durante la reunión</label>
+  <select id="privateMode" style="width:100%;padding:12px;border-radius:10px;background:#202a43;color:white;border:1px solid #38445f">
+    <option value="yes">Activado — no reproducir por el altavoz del teléfono</option>
+    <option value="no">Desactivado</option>
+  </select>
+  <button class="action" id="saveAssistants" style="width:100%;margin-top:14px">Guardar preferencias</button>
+  <p id="assistantStatus" class="note" aria-live="polite">Preferencias guardadas solo en este dispositivo. Las conexiones reales todavía no están activas.</p>
+</section>
+
+<h2>CONSULTA RÁPIDA DURANTE LA REUNIÓN</h2>
+<section class="item" style="display:block">
+  <label for="quickAsk" style="display:block;font-size:12px;color:#9aa7c2;margin:4px 0 7px">Pregunta privada</label>
+  <textarea id="quickAsk" rows="2" placeholder="Ej.: Explícame brevemente este término..." style="width:100%;padding:12px;border-radius:10px;background:#202a43;color:white;border:1px solid #38445f;font:inherit;resize:vertical"></textarea>
+  <button class="action" id="quickAskBtn" style="width:100%;margin-top:10px">Consultar asistente</button>
+  <p id="quickAskStatus" class="note" aria-live="polite">Demostración de interfaz. No envía audio ni preguntas a ChatGPT todavía.</p>
+  <p class="note">La respuesta privada por auriculares requiere una integración de voz y pruebas específicas en iPhone. Safari puede limitar el uso continuo del micrófono y la reproducción en segundo plano; no se garantiza todavía que funcione con la pantalla bloqueada.</p>
+</section>
+
+<h2>PREGÚNTALE A VOX AI</h2>
+<section class="item" style="display:block">
+  <p class="note">Cuando conectemos el motor de transcripción y búsqueda, podrás hacer preguntas sobre lo que se dijo y saltar al momento correspondiente del audio.</p>
+  <label for="askVox" style="display:block;font-size:12px;color:#9aa7c2;margin:10px 0 7px">Tu pregunta</label>
+  <textarea id="askVox" rows="3" placeholder="Ej.: ¿Qué dijo Voz 2 sobre el informe de calidad?" style="width:100%;padding:12px;border-radius:10px;background:#202a43;color:white;border:1px solid #38445f;font:inherit;resize:vertical"></textarea>
+  <button class="action" id="askVoxBtn" style="width:100%;margin-top:12px">Preguntar a VOX AI</button>
+  <p id="askVoxStatus" class="note" aria-live="polite">Función en preparación: todavía no hay un motor IA conectado, por lo que esta pantalla no responderá preguntas reales.</p>
+  <div style="background:#202a43;border-radius:10px;padding:12px;margin-top:12px">
+    <strong style="font-size:12px">Ejemplos de preguntas</strong>
+    <ul class="note" style="padding-left:18px">
+      <li>¿Quién mencionó la fecha límite?</li>
+      <li>¿Qué se decidió sobre CAPA?</li>
+      <li>¿En qué minuto hablaron del problema?</li>
+      <li>Resume los compromisos de cada participante.</li>
+    </ul>
+  </div>
+</section>
+
+<h2>FUNCIONES IA — PRÓXIMAMENTE</h2>
+<div class="pills"><span class="pill">Transcripción</span><span class="pill">Traducción</span><span class="pill">Hablantes</span><span class="pill">Resúmenes</span></div>
+<footer>VOX AI · Prototipo privado 0.7 · No grabes a otras personas sin el consentimiento requerido.</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const wave=$('wave');for(let i=0;i<25;i++){const b=document.createElement('i');wave.appendChild(b)}
+let recorder=null,chunks=[],started=0,elapsed=0,timer=null,paused=false,db;
+const DB='vox-ai-db',STORE='clips';
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+async function allClips(){db=db||await openDB();return new Promise((res,rej)=>{const r=db.transaction(STORE).objectStore(STORE).getAll();r.onsuccess=()=>res(r.result.sort((a,b)=>b.created-a.created));r.onerror=()=>rej(r.error)})}
+async function saveClip(blob){db=db||await openDB();return new Promise((res,rej)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).add({blob,created:Date.now(),type:blob.type});tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}
+function fmt(s){s=Math.max(0,Math.floor(s));return [Math.floor(s/3600),Math.floor(s/60)%60,s%60].map(n=>String(n).padStart(2,'0')).join(':')}
+function updateTime(){ $('timer').textContent=fmt(elapsed+(paused?0:(Date.now()-started)/1000));}
+function tick(){clearInterval(timer);timer=setInterval(updateTime,250)}
+async function start(){
+ try{
+  if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)throw new Error('Este navegador no permite grabar audio. Abre VOX AI en Safari actualizado.');
+  const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  let options={};
+  if(MediaRecorder.isTypeSupported('audio/mp4'))options.mimeType='audio/mp4';
+  else if(MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))options.mimeType='audio/webm;codecs=opus';
+  recorder=new MediaRecorder(stream,options);chunks=[];
+  recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+  recorder.onstop=async()=>{
+   const blob=new Blob(chunks,{type:recorder.mimeType||'audio/mp4'});
+   if(blob.size){await saveClip(blob);await renderList();$('status').textContent='GRABACIÓN GUARDADA';}
+   stream.getTracks().forEach(t=>t.stop());
+  };
+  recorder.start(1000);started=Date.now();elapsed=0;paused=false;
+  $('app').classList.add('recording');$('record').disabled=true;$('pause').disabled=false;$('stop').disabled=false;
+  $('status').textContent='GRABANDO…';$('pause').textContent='Ⅱ Pausar';tick();
+ }catch(e){$('status').textContent=e.message||'No se pudo acceder al micrófono.'}
+}
+function pauseResume(){
+ if(!recorder)return;
+ if(!paused){recorder.pause();elapsed+=(Date.now()-started)/1000;paused=true;$('pause').textContent='▶ Continuar';$('status').textContent='EN PAUSA';}
+ else{recorder.resume();started=Date.now();paused=false;$('pause').textContent='Ⅱ Pausar';$('status').textContent='GRABANDO…';}
+ updateTime();
+}
+function stop(){
+ if(!recorder)return;
+ if(!paused)elapsed+=(Date.now()-started)/1000;
+ clearInterval(timer);recorder.stop();recorder=null;paused=false;
+ $('app').classList.remove('recording');$('record').disabled=false;$('pause').disabled=true;$('stop').disabled=true;$('timer').textContent=fmt(elapsed);
+}
+async function renderList(){
+ const clips=await allClips();$('count').textContent=`(${clips.length})`;const list=$('list');list.innerHTML='';
+ if(!clips.length){list.innerHTML='<p class="note">Tus grabaciones aparecerán aquí.</p>';return}
+ clips.forEach(c=>{
+  const url=URL.createObjectURL(c.blob),date=new Date(c.created).toLocaleString();
+  const row=document.createElement('div');row.className='item';
+  const meta=document.createElement('div');meta.className='meta';
+  const title=document.createElement('strong');title.textContent='Grabación '+new Date(c.created).toLocaleString();
+  const small=document.createElement('small');small.textContent=date;meta.append(title,small);
+  const play=document.createElement('button');play.textContent='▶';play.onclick=()=>{const a=new Audio(url);a.play()};
+  const share=document.createElement('button');share.textContent='↗';share.onclick=async()=>{
+   const ext=c.type.includes('mp4')?'m4a':'webm',file=new File([c.blob],`VOX_${c.id}.${ext}`,{type:c.type});
+   if(navigator.share&&navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:'VOX AI audio'})}
+   else{const a=document.createElement('a');a.href=url;a.download=file.name;a.click()}
+  };
+  row.append(meta,play,share);list.append(row);
+ });
+}
+$('record').onclick=start;$('pause').onclick=pauseResume;$('stop').onclick=stop;
+renderList().catch(()=>{$('list').textContent='No se pudo cargar el almacenamiento local.'});
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+
+const LANG_KEY='vox-ai-language-settings';
+const defaultLangSettings={source:'Detectar automáticamente',transcript:'Español',translate:'yes'};
+function loadLangSettings(){
+  let s=defaultLangSettings;
+  try{s={...defaultLangSettings,...JSON.parse(localStorage.getItem(LANG_KEY)||'{}')}}catch(e){}
+  $('sourceLang').value=s.source;
+  $('transcriptLang').value=s.transcript;
+  $('translateExtra').value=s.translate;
+}
+$('saveLang').addEventListener('click',()=>{
+  const s={source:$('sourceLang').value,transcript:$('transcriptLang').value,translate:$('translateExtra').value};
+  localStorage.setItem(LANG_KEY,JSON.stringify(s));
+  $('langStatus').textContent=`Guardado: original ${s.source}; transcripción ${s.transcript}; traducción adicional ${s.translate==='yes'?'activada':'desactivada'}.`;
+});
+loadLangSettings();
+
+
+const SPEAKER_KEY='vox-ai-speaker-settings';
+const defaultSpeakerSettings={style:'Voz',count:'yes',names:''};
+function loadSpeakerSettings(){
+  let s=defaultSpeakerSettings;
+  try{s={...defaultSpeakerSettings,...JSON.parse(localStorage.getItem(SPEAKER_KEY)||'{}')}}catch(e){}
+  $('speakerStyle').value=s.style;
+  $('speakerCount').value=s.count;
+  $('speakerNames').value=s.names;
+}
+$('saveSpeakers').addEventListener('click',()=>{
+  const s={style:$('speakerStyle').value,count:$('speakerCount').value,names:$('speakerNames').value.trim()};
+  localStorage.setItem(SPEAKER_KEY,JSON.stringify(s));
+  $('speakerStatus').textContent=`Guardado: etiquetas ${s.style}; estimación de participantes ${s.count==='yes'?'activada':'desactivada'}; nombres personalizados ${s.names?'configurados':'sin configurar'}.`;
+});
+loadSpeakerSettings();
+
+
+const BILINGUAL_KEY='vox-ai-bilingual-settings';
+function loadBilingualSettings(){
+  let s={view:'stacked',keepOriginal:'yes'};
+  try{s={...s,...JSON.parse(localStorage.getItem(BILINGUAL_KEY)||'{}')}}catch(e){}
+  $('bilingualView').value=s.view;
+  $('keepOriginal').value=s.keepOriginal;
+}
+$('saveBilingual').addEventListener('click',()=>{
+  const s={view:$('bilingualView').value,keepOriginal:$('keepOriginal').value};
+  localStorage.setItem(BILINGUAL_KEY,JSON.stringify(s));
+  const labels={stacked:'original arriba y traducción debajo',original:'solo original',translated:'solo traducción'};
+  $('bilingualStatus').textContent=`Guardado: ${labels[s.view]}. Audio y texto originales: siempre conservar.`;
+});
+loadBilingualSettings();
+
+
+const ASSIST_KEY='vox-ai-assistant-settings';
+function loadAssistantSettings(){
+ let a={mode:'vox',reply:'screen',privateMode:'yes'};
+ try{a={...a,...JSON.parse(localStorage.getItem(ASSIST_KEY)||'{}')}}catch(e){}
+ $('assistantMode').value=a.mode;$('replyMode').value=a.reply;$('privateMode').value=a.privateMode;
+}
+$('saveAssistants').addEventListener('click',()=>{
+ const a={mode:$('assistantMode').value,reply:$('replyMode').value,privateMode:$('privateMode').value};
+ localStorage.setItem(ASSIST_KEY,JSON.stringify(a));
+ $('assistantStatus').textContent='Preferencias guardadas en este dispositivo. Importante: guardar estas opciones no conecta las cuentas ni activa las respuestas IA.';
+});
+loadAssistantSettings();
+$('quickAskBtn').addEventListener('click',()=>{
+ const q=$('quickAsk').value.trim();
+ $('quickAskStatus').textContent=q?'Pregunta preparada. La conexión autorizada con el asistente y el motor de contexto todavía deben implementarse en un servidor seguro.':'Escribe una pregunta primero.';
+});
+$('askVoxBtn').addEventListener('click',()=>{
+  const q=$('askVox').value.trim();
+  $('askVoxStatus').textContent=q
+    ? 'Pregunta guardada en esta pantalla de prueba. Para responderla con precisión, falta conectar la transcripción indexada, los fragmentos de audio y el motor IA.'
+    : 'Escribe primero una pregunta sobre la conversación.';
+});
+
+</script>
+</body></html>
