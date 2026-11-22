@@ -323,6 +323,112 @@ $('askVoxBtn').addEventListener('click',()=>{
     ? 'Pregunta guardada en esta pantalla de prueba. Para responderla con precisión, falta conectar la transcripción indexada, los fragmentos de audio y el motor IA.'
     : 'Escribe primero una pregunta sobre la conversación.';
 });
-
+;(() => {
+  if (document.getElementById('vox-live-panel')) return;
+  const panel = document.createElement('section');
+  panel.id = 'vox-live-panel';
+  panel.className = 'item';
+  panel.style.display = 'block';
+  panel.innerHTML = `
+    <h2>VOX AI · TRANSCRIPCIÓN Y TRADUCCIÓN</h2>
+    <button id="voxStart" class="action">n Iniciar</button>
+    <button id="voxStop" class="action" disabled>n Detener</button>
+    <p id="voxStatus" class="note">Selecciona los idiomas y pulsa Iniciar.</p>
+    <strong>ORIGINAL</strong>
+    <p id="voxOriginal" style="white-space:pre-wrap">Aquí aparecerá tu voz.</p>
+    <hr>
+    <strong>TRADUCCIÓN</strong>
+    <p id="voxTranslated" style="white-space:pre-wrap">Aquí aparecerá la traducción.</p>
+    <button id="voxSpeak" class="action" disabled>n Escuchar traducción</button>
+  `;
+  const footer = document.querySelector('footer');
+  footer.parentNode.insertBefore(panel, footer);
+  const el = id => document.getElementById(id);
+  const codes = {
+    'Español':'es-ES',
+    'Inglés':'en-US',
+    'Francés':'fr-FR',
+    'Portugués':'pt-PT',
+    'Italiano':'it-IT',
+    'Alemán':'de-DE'
+  };
+  let recognition = null;
+  let translatedText = '';
+  async function translate(text) {
+    const source = (codes[el('sourceLang').value] || 'es-ES').slice(0,2);
+    const target = (codes[el('transcriptLang').value] || 'es-ES').slice(0,2);
+    if (source === target) {
+      translatedText += text + '\\n';
+      el('voxTranslated').textContent = translatedText;
+      el('voxSpeak').disabled = false;
+      return;
+    }
+    try {
+      const url = 'https://api.mymemory.translated.net/get?q=' +
+        encodeURIComponent(text.slice(0,200)) +
+        '&langpair=' + source + '|' + target;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+      const result = data.responseData.translatedText;
+      translatedText += result + '\\n';
+      el('voxTranslated').textContent = translatedText;
+      el('voxSpeak').disabled = false;
+    } catch (error) {
+      el('voxStatus').textContent = 'No se pudo traducir. Comprueba Internet.';
+    }
+Página 1
+  }
+  el('voxStart').onclick = () => {
+    const Speech = window.SpeechRecognition ||
+                   window.webkitSpeechRecognition;
+    if (!Speech) {
+      el('voxStatus').textContent =
+        'Este navegador no admite reconocimiento de voz.';
+      return;
+    }
+    recognition = new Speech();
+    recognition.lang = codes[el('sourceLang').value] || 'es-ES';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.onstart = () => {
+      el('voxStatus').textContent = 'Escuchando...';
+      el('voxStart').disabled = true;
+      el('voxStop').disabled = false;
+    };
+    recognition.onresult = event => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          const phrase = event.results[i][0].transcript.trim();
+          el('voxOriginal').textContent += '\\n' + phrase;
+          translate(phrase);
+        }
+      }
+    };
+    recognition.onerror = event => {
+      el('voxStatus').textContent = 'Error: ' + event.error;
+    };
+    recognition.onend = () => {
+      el('voxStart').disabled = false;
+      el('voxStop').disabled = true;
+    };
+    try {
+      recognition.start();
+    } catch (error) {
+      el('voxStatus').textContent = 'No se pudo iniciar. Inténtalo otra vez.';
+    }
+  };
+  el('voxStop').onclick = () => {
+    if (recognition) recognition.stop();
+    el('voxStatus').textContent = 'Transcripción detenida.';
+  };
+  el('voxSpeak').onclick = () => {
+    if (!translatedText || !window.speechSynthesis) return;
+    speechSynthesis.cancel();
+    const voice = new SpeechSynthesisUtterance(translatedText);
+    voice.lang = codes[el('transcriptLang').value] || 'es-ES';
+    speechSynthesis.speak(voice);
+  };
+})()
 </script>
 </body></html>
