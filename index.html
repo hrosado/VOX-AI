@@ -208,7 +208,7 @@ async function start(){
   recorder=new MediaRecorder(stream,options);chunks=[];
   recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
   recorder.onstop=async()=>{
-   const blob=new Blob(chunks,{type:recorder.mimeType||'audio/mp4'});
+   const blob=new Blob(chunks,{type:options.mimeType||'audio/mp4'});
    if(blob.size){await saveClip(blob);await renderList();$('status').textContent='GRABACIÓN GUARDADA';}
    stream.getTracks().forEach(t=>t.stop());
   };
